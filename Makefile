@@ -32,8 +32,8 @@ SCANNER_DATE := `date +%Y-%m-%d`
 SCANNER_DATE_YEST := `TZ=GMT+24 +%Y:%m:%d`
 SCANNER_VERSION := v8
 SCANNER_LOCALIP := $(shell ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | awk '{print $1}' | head -n 1)
-SCANNER_IMAGES_TO_SCAN := splunk-debian-9 splunk-debian-10 splunk-centos-7 splunk-redhat-8 uf-debian-9 uf-debian-10 uf-centos-7 uf-redhat-8 splunk-py23-debian-9 splunk-py23-debian-10 splunk-py23-centos-7 splunk-py23-redhat-8 uf-py23-debian-9 uf-py23-debian-10 uf-py23-centos-7 uf-py23-redhat-8
-CONTAINERS_TO_SAVE := splunk-debian-9 splunk-debian-10 splunk-centos-7 splunk-redhat-8 uf-debian-9 uf-debian-10 uf-centos-7 uf-redhat-8 splunk-py23-debian-9 splunk-py23-debian-10 splunk-py23-centos-7 splunk-py23-redhat-8 uf-py23-debian-9 uf-py23-debian-10 uf-py23-centos-7 uf-py23-redhat-8
+SCANNER_IMAGES_TO_SCAN := splunk-debian-9 splunk-debian-10 splunk-centos-7 splunk-redhat-8 uf-debian-9 uf-debian-10 uf-centos-7 uf-redhat-8 splunk-py23-debian-9 splunk-py23-debian-10 splunk-py23-centos-7 splunk-py23-redhat-8 uf-py23-debian-9 uf-py23-debian-10 uf-py23-centos-7 uf-py23-redhat-8 splunk-redhat-9 uf-redhat-9 splunk-py23-redhat-9
+CONTAINERS_TO_SAVE := splunk-debian-9 splunk-debian-10 splunk-centos-7 splunk-redhat-8 uf-debian-9 uf-debian-10 uf-centos-7 uf-redhat-8 splunk-py23-debian-9 splunk-py23-debian-10 splunk-py23-centos-7 splunk-py23-redhat-8 uf-py23-debian-9 uf-py23-debian-10 uf-py23-centos-7 uf-py23-redhat-8 splunk-redhat-9 uf-redhat-9 splunk-py23-redhat-9
 ifeq ($(shell uname), Linux)
 	SCANNER_FILE = clair-scanner_linux_amd64
 else ifeq ($(shell uname), Darwin)
@@ -57,7 +57,7 @@ ansible:
 	@cat splunk-ansible/version.txt
 
 ##### Base images #####
-base: base-debian-9 base-debian-10 base-centos-7 base-centos-8 base-redhat-8 base-windows-2016
+base: base-debian-9 base-debian-10 base-centos-7 base-centos-8 base-redhat-8 base-windows-2016 base-redhat-9
 
 base-debian-10:
 	docker build ${DOCKER_BUILD_FLAGS} -t base-debian-10:${IMAGE_VERSION} ./base/debian-10
@@ -74,6 +74,9 @@ base-centos-8:
 base-redhat-8:
 	docker build ${DOCKER_BUILD_FLAGS} --label version=${SPLUNK_VERSION} -t base-redhat-8:${IMAGE_VERSION} ./base/redhat-8
 
+base-redhat-9:
+	docker build ${DOCKER_BUILD_FLAGS} --label version=${SPLUNK_VERSION} -t base-redhat-9:${IMAGE_VERSION} ./base/redhat-9
+
 base-redhat-8-armv8:
 	docker buildx build ${DOCKER_BUILD_FLAGS} --build-arg BUSYBOX_URL=${BUSYBOX_URL} --label version=${SPLUNK_VERSION} -t base-redhat-8-armv8:${IMAGE_VERSION} ./base/redhat-8
 
@@ -81,7 +84,7 @@ base-windows-2016:
 	docker build ${DOCKER_BUILD_FLAGS} -t base-windows-2016:${IMAGE_VERSION} ./base/windows-2016
 
 ##### Minimal images #####
-minimal: minimal-debian-9 minimal-debian-10 minimal-centos-7 minimal-centos-8 minimal-redhat-8
+minimal: minimal-debian-9 minimal-debian-10 minimal-centos-7 minimal-centos-8 minimal-redhat-8 minimal-redhat-9
 
 minimal-debian-9: base-debian-9
 	docker build ${DOCKER_BUILD_FLAGS} \
@@ -118,8 +121,15 @@ minimal-redhat-8: base-redhat-8
 		--build-arg SPLUNK_BUILD_URL=${SPLUNK_LINUX_BUILD_URL} \
 		--target minimal -t minimal-redhat-8:${IMAGE_VERSION} .
 
+minimal-redhat-9: base-redhat-9
+	docker build ${DOCKER_BUILD_FLAGS} \
+		-f splunk/common-files/Dockerfile \
+		--build-arg SPLUNK_BASE_IMAGE=base-redhat-9 \
+		--build-arg SPLUNK_BUILD_URL=${SPLUNK_LINUX_BUILD_URL} \
+		--target minimal -t minimal-redhat-9:${IMAGE_VERSION} .
+
 ##### Bare images #####
-bare: bare-debian-9 bare-debian-10 bare-centos-7 bare-centos-8 bare-redhat-8
+bare: bare-debian-9 bare-debian-10 bare-centos-7 bare-centos-8 bare-redhat-8 bare-redhat-9
 
 bare-debian-9: base-debian-9
 	docker build ${DOCKER_BUILD_FLAGS} \
@@ -156,8 +166,14 @@ bare-redhat-8: base-redhat-8
 		--build-arg SPLUNK_BUILD_URL=${SPLUNK_LINUX_BUILD_URL} \
 		--target bare -t bare-redhat-8:${IMAGE_VERSION} .
 
+bare-redhat-9: base-redhat-9
+	docker build ${DOCKER_BUILD_FLAGS} \
+		-f splunk/common-files/Dockerfile \
+		--build-arg SPLUNK_BASE_IMAGE=base-redhat-9 \
+		--build-arg SPLUNK_BUILD_URL=${SPLUNK_LINUX_BUILD_URL} \
+		--target bare -t bare-redhat-9:${IMAGE_VERSION} .
 ##### Splunk images #####
-splunk: ansible splunk-debian-9 splunk-debian-10 splunk-centos-7 splunk-centos-8 splunk-redhat-8
+splunk: ansible splunk-debian-9 splunk-debian-10 splunk-centos-7 splunk-centos-8 splunk-redhat-8 splunk-redhat-9
 
 splunk-debian-9: base-debian-9 ansible
 	docker build ${DOCKER_BUILD_FLAGS} \
@@ -193,6 +209,13 @@ splunk-redhat-8: base-redhat-8 ansible
 		--build-arg SPLUNK_BASE_IMAGE=base-redhat-8 \
 		--build-arg SPLUNK_BUILD_URL=${SPLUNK_LINUX_BUILD_URL} \
 		-t splunk-redhat-8:${IMAGE_VERSION} .
+
+splunk-redhat-9: base-redhat-9 ansible
+	docker build ${DOCKER_BUILD_FLAGS} \
+		-f splunk/common-files/Dockerfile \
+		--build-arg SPLUNK_BASE_IMAGE=base-redhat-9 \
+		--build-arg SPLUNK_BUILD_URL=${SPLUNK_LINUX_BUILD_URL} \
+		-t splunk-redhat-9:${IMAGE_VERSION} .
 
 splunk-windows-2016: base-windows-2016 ansible
 	docker build ${DOCKER_BUILD_FLAGS} \
@@ -302,6 +325,12 @@ splunk-py23-redhat-8: splunk-redhat-8
 		--build-arg SPLUNK_PRODUCT=splunk \
 		-t splunk-py23-redhat-8:${IMAGE_VERSION} .
 
+splunk-py23-redhat-9: splunk-redhat-9
+	docker build ${DOCKER_BUILD_FLAGS} \
+		-f py23-image/redhat-9/Dockerfile \
+		--build-arg SPLUNK_PRODUCT=splunk \
+		-t splunk-py23-redhat-9:${IMAGE_VERSION} .
+
 uf-py23: uf-py23-debian-9 uf-py23-debian-10 uf-py23-centos-7 uf-py23-redhat-8
 
 uf-py23-debian-9: uf-debian-9
@@ -335,6 +364,11 @@ uf-py23-redhat-8: uf-redhat-8
 		-t uf-py23-redhat-8:${IMAGE_VERSION} .
 
 
+uf-py23-redhat-9: uf-redhat-9
+	docker build ${DOCKER_BUILD_FLAGS} \
+		-f py23-image/redhat-9/Dockerfile \
+		--build-arg SPLUNK_PRODUCT=uf \
+		-t uf-py23-redhat-9:${IMAGE_VERSION} .
 ##### Tests #####
 sample-compose-up: sample-compose-down
 	docker-compose -f test_scenarios/${SPLUNK_COMPOSE} up -d 
@@ -352,6 +386,8 @@ test_centos7: clean ansible splunk-centos-7 uf-centos-7 test_setup run_small_tes
 
 test_redhat8: clean ansible splunk-redhat-8 uf-redhat-8 test_setup run_small_tests_redhat8 run_large_tests_redhat8
 
+test_redhat9: clean ansible splunk-redhat-9 uf-redhat-9 test_setup run_small_tests_redhat9 run_large_tests_redhat9
+
 test_debian9: clean ansible splunk-debian-9 uf-debian-9 test_setup run_small_tests_debian9 run_large_tests_debian9
 
 test_debian10: clean ansible splunk-debian-10 uf-debian-10 test_setup run_small_tests_debian10 run_large_tests_debian10
@@ -368,9 +404,17 @@ run_small_tests_redhat8:
 	@echo 'Running the super awesome small tests; RedHat 8'
 	pytest -n 2 --reruns 1 -sv tests/test_single_splunk_image.py --platform redhat-8 --junitxml test-results/redhat8-result/testresults_small_redhat8.xml
 
+run_small_tests_redhat9:
+	@echo 'Running the super awesome small tests; RedHat 9'
+	pytest -n 2 --reruns 1 -sv tests/test_single_splunk_image.py --platform redhat-9 --junitxml test-results/redhat9-result/testresults_small_redhat9.xml
+
 run_large_tests_redhat8:
 	@echo 'Running the super awesome large tests; RedHat 8'
 	pytest -n 2 --reruns 1 -sv tests/test_distributed_splunk_image.py --platform redhat-8 --junitxml test-results/redhat8-result/testresults_large_redhat8.xml
+
+run_large_tests_redhat9:
+	@echo 'Running the super awesome large tests; RedHat 9'
+	pytest -n 2 --reruns 1 -sv tests/test_distributed_splunk_image.py --platform redhat-9 --junitxml test-results/redhat9-result/testresults_large_redhat9.xml
 
 test_setup:
 	@echo 'Install test requirements'
